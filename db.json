@@ -1,0 +1,22 @@
+[
+    {
+        "product": "Печенье",
+        "price": 34,
+        "rating": 3
+    },
+    {
+        "product": "Сахар",
+        "price": 450,
+        "rating": 2
+    },
+    {
+        "product": "Варенье",
+        "price": 200,
+        "rating": 6
+    },
+    {
+        "product": "Молоко",
+        "price": 201,
+        "rating": 5
+    }
+]
