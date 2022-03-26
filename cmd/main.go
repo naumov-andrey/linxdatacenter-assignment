@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/naumov-andrey/linxdatacenter-assignment/internal/reader"
 	"github.com/naumov-andrey/linxdatacenter-assignment/internal/reader/csv"
 	"github.com/naumov-andrey/linxdatacenter-assignment/internal/reader/json"
+	"github.com/naumov-andrey/linxdatacenter-assignment/internal/util"
 )
 
 func main() {
@@ -20,13 +20,13 @@ func main() {
 
 	filePath := os.Args[1]
 	fileExt := filepath.Ext(filePath)
-	var readerConstructore func(file *os.File) reader.ProductReader
+	var readerConstructor func(file *os.File) reader.ProductReader
 
 	switch fileExt {
 	case ".csv":
-		readerConstructore = csv.NewProductCSVReader
+		readerConstructor = csv.NewProductCSVReader
 	case ".json":
-		readerConstructore = json.NewProductJSONReader
+		readerConstructor = json.NewProductJSONReader
 	default:
 		log.Fatalf("file extension must be '.csv' or '.json', got '%v'", fileExt)
 	}
@@ -37,50 +37,14 @@ func main() {
 	}
 	defer file.Close()
 
-	records := make(chan model.Product)
-	reader := readerConstructore(file)
+	products := make(chan model.Product)
 
-	go func(records chan<- model.Product) {
-		defer close(records)
+	go util.ParseProducts(products, readerConstructor(file))
 
-		for {
-			record, err := reader.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatal(fmt.Errorf("error while reading: %w", err))
-			}
-
-			records <- record
-		}
-	}(records)
-
-	var maxPriceProduct, maxRatingProduct model.Product
-	isFirstComparing := true
-
-	for record := range records {
-		if isFirstComparing {
-			maxPriceProduct = record
-			maxRatingProduct = record
-			isFirstComparing = false
-		}
-
-		if record.Price > maxPriceProduct.Price {
-			maxPriceProduct = record
-		}
-		if record.Rating > maxRatingProduct.Rating {
-			maxRatingProduct = record
-		}
+	maxPrice, maxRating, ok := util.ProcessProducts(products)
+	if !ok {
+		log.Fatal("No product records found")
 	}
 
-	if isFirstComparing {
-		fmt.Print("No product records found")
-	} else {
-		fmt.Printf(
-			"Product with max price: %v \nProduct with max rating: %v",
-			maxPriceProduct,
-			maxRatingProduct,
-		)
-	}
+	fmt.Printf("Product with max price: %v \nProduct with max rating: %v", maxPrice, maxRating)
 }
